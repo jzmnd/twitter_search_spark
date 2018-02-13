@@ -106,6 +106,11 @@ if __name__ == '__main__':
         type=int,
         default=1,
         help="Window size for adjacency")
+    parser.add_argument(
+        '-t', '--top',
+        type=int,
+        default=15,
+        help="Number of top characters to output")
     args = parser.parse_args()
 
     # Match character, SQL search and regex search
@@ -126,7 +131,8 @@ if __name__ == '__main__':
 
     # Main process
     start_t = timer()
-    result = process(spark, args.data_path, match_re, args.window)
+    result = process(spark, args.data_path, match_re,
+                     window=args.window, top=args.top)
     end_t = timer()
 
     print("Elapsed Time          : {:.3f} min".format((end_t - start_t) / 60))
