@@ -10,6 +10,7 @@ Spark version for data parallelization.
 -p  : Path to the Twitter archive
 -m  : Emoji to match
 -w  : Window size for adjacency
+-t  : Number of top characters to output
 """
 
 import os
@@ -48,6 +49,12 @@ def process(spark, data_dir, match_re, window=1, top=15):
                                 files_match['lang'],
                                 files_match['geo']).rdd.cache()
 
+    # Select tweet text from all
+    tweets_all = files_filtered.select('text').rdd
+    allemoji = tweets_all.flatMap(
+        lambda row: EMOJI_UNICODE_SET.intersection(list(row.text))) \
+        .map(lambda t: (t, 1))
+
     # Count tweets
     tweet_cnt = tweets.count()
 
@@ -68,15 +75,18 @@ def process(spark, data_dir, match_re, window=1, top=15):
     after_cnt = after.count()
 
     # Counts reduced by emoji character
+    allemoji_cnt_by = allemoji.reduceByKey(add)
     before_cnt_by = before.reduceByKey(add)
     after_cnt_by = after.reduceByKey(add)
 
     # Take ordered list of before and after characters
+    allemoji_top = allemoji_cnt_by.takeOrdered(top, key=lambda x: -x[1])
     before_top = before_cnt_by.takeOrdered(top, key=lambda x: -x[1])
     after_top = after_cnt_by.takeOrdered(top, key=lambda x: -x[1])
 
     summary_dict = {'before_top': before_top,
                     'after_top': after_top,
+                    'all_emoji_top': allemoji_top,
                     'match_count': match_cnt,
                     'tweet_count': tweet_cnt,
                     'total_count': cnt,
@@ -135,6 +145,8 @@ if __name__ == '__main__':
                      window=args.window, top=args.top)
     end_t = timer()
 
+    spark.stop()
+
     print("Elapsed Time          : {:.3f} min".format((end_t - start_t) / 60))
     print("Total Tweets          : {:d}".format(result['total_count']))
     print("Total Tweets w/ Match : {:d}".format(result['tweet_count']))
@@ -144,5 +156,3 @@ if __name__ == '__main__':
 
     # Output results
     output(result)
-
-    spark.stop()
