@@ -30,6 +30,7 @@ spark-warehouse/
 # Data / logs
 data/
 small_data/
+outputs/
 *.log
 
 # DS Store

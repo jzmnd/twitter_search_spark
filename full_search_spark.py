@@ -20,11 +20,12 @@ from pyspark.sql import SparkSession
 from unicode_codes import EMOJI_UNICODE, EMOJI_UNICODE_SET
 from timeit import default_timer as timer
 from utils import get_re
+from utils import output
 
 __author__ = 'Jeremy Smith'
 
 
-def process(spark, data_dir, match_re, window=2, top=15):
+def process(spark, data_dir, match_re, window=1, top=15):
     """
     Main spark process for counting matches and other statistics.
     Input:
@@ -34,27 +35,27 @@ def process(spark, data_dir, match_re, window=2, top=15):
         window - find this many characters before and after the match
         top - number of characters to return in count list
     """
-    # Get json files, remove deletes, and filter by the match emoji
-    files = spark.read.json(os.path.join(data_dir, '01', '*'))
-    files_rd = files.filter(files.delete.isNull())
-    files_filtered = files_rd.filter(files_rd.text.like(match_sql)) \
-                             .cache()
-    cnt = files_rd.count()
+    # Get json files and remove deletes
+    files = spark.read.json(os.path.join(data_dir, '*'))
+    files_filtered = files.filter(files.delete.isNull())
+    cnt = files_filtered.count()
 
-    # Extract tweet text, language and location info
-    tweets = files_filtered.rdd \
-                           .map(lambda x: x.text)
-    langs = files_filtered.rdd \
-                          .map(lambda x: x.lang)
-    locs = files_filtered.rdd \
-                         .map(lambda x: (x.geo, x.user.time_zone))
+    # Match only to those with required character
+    files_match = files_filtered.filter(files_filtered.text.like(match_sql))
 
-    # Count tweets and languages
-    langs_cnt = langs.countByValue()
+    # Select tweet text, language and location info
+    tweets = files_match.select(files_match['text'],
+                                files_match['lang'],
+                                files_match['geo']).rdd.cache()
+
+    # Count tweets
     tweet_cnt = tweets.count()
 
+    # Count languages
+    langs_cnt = tweets.map(lambda row: row.lang).countByValue()
+
     # Perform the regex search
-    results = tweets.flatMap(lambda text: re.findall(match_re, text)) \
+    results = tweets.flatMap(lambda row: re.findall(match_re, row.text)) \
                     .cache()
     before = results.filter(lambda t: (t[0] in EMOJI_UNICODE_SET)) \
                     .map(lambda t: (t[0], 1))
@@ -107,6 +108,7 @@ if __name__ == '__main__':
         help="Window size for adjacency")
     args = parser.parse_args()
 
+    # Match character, SQL search and regex search
     match = EMOJI_UNICODE[':{}:'.format(args.emoji_match)]
     match_sql = '%{}%'.format(match)
     match_re = get_re(match, window=args.window)
@@ -114,6 +116,7 @@ if __name__ == '__main__':
     print("Running on data   : {}".format(args.data_path))
     print("Match             : {}  {}".format(args.emoji_match, match))
 
+    # Build SparkSession
     spark = SparkSession.builder \
                         .master('local[*]') \
                         .appName('full_search_spark') \
@@ -121,17 +124,19 @@ if __name__ == '__main__':
                         .getOrCreate()
     sc = spark.sparkContext
 
+    # Main process
     start_t = timer()
     result = process(spark, args.data_path, match_re, args.window)
     end_t = timer()
 
-    print(result['before_top'])
-    print(result['after_top'])
     print("Elapsed Time          : {:.3f} min".format((end_t - start_t) / 60))
     print("Total Tweets          : {:d}".format(result['total_count']))
     print("Total Tweets w/ Match : {:d}".format(result['tweet_count']))
     print("Total Match Chars     : {:d}".format(result['match_count']))
     print("Total w/ Before       : {:d}".format(result['before_count']))
     print("Total w/ After        : {:d}".format(result['after_count']))
+
+    # Output results
+    output(result)
 
     spark.stop()
