@@ -27,7 +27,7 @@ def get_re(match, window=1):
     return re.compile(r.format(*a))
 
 
-def output(result):
+def output(result, disp=True):
     """
     Function to create dataframes from the summary result dictionary and output
     .csv files.
@@ -43,12 +43,13 @@ def output(result):
     df_allemoji = pd.DataFrame(
         result['all_emoji_top'], columns=['Emoji', 'Count'])
     df_lang = pd.DataFrame(
-        list(result['language_counts'].items()), columns=['Lang', 'Count'])
+        result['language_counts'], columns=['Lang', 'Count'])
 
-    print(df_before)
-    print(df_after)
-    print(df_lang)
-    print(df_allemoji)
+    if disp:
+        print(df_before)
+        print(df_after)
+        print(df_lang)
+        print(df_allemoji)
 
     # Merge before and after dataframes
     df_all = pd.merge(df_before, df_after, on='Emoji', how='outer')

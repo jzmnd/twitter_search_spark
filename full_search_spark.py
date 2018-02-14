@@ -18,6 +18,7 @@ import re
 from operator import add
 import argparse
 from pyspark.sql import SparkSession
+from pyspark.sql.types import *
 from unicode_codes import EMOJI_UNICODE, EMOJI_UNICODE_SET
 from timeit import default_timer as timer
 from utils import get_re
@@ -37,32 +38,29 @@ def process(spark, data_dir, match_re, window=1, top=15):
         top - number of characters to return in count list
     """
     # Get json files and remove deletes
-    files = spark.read.json(os.path.join(data_dir, '*'))
+    files = spark.read.json(os.path.join(data_dir, '*'), schema.value)
     files_filtered = files.filter(files.delete.isNull())
     cnt = files_filtered.count()
 
     # Match only to those with required character
-    files_match = files_filtered.filter(files_filtered.text.like(match_sql))
+    tweets = files_filtered.filter(files_filtered.text.like(match_sql)) \
+                           .cache()
 
-    # Select tweet text, language and location info
-    tweets = files_match.select(files_match['text'],
-                                files_match['lang'],
-                                files_match['geo']).rdd.cache()
-
-    # Select tweet text from all
-    tweets_all = files_filtered.select('text').rdd
-    allemoji = tweets_all.flatMap(
-        lambda row: EMOJI_UNICODE_SET.intersection(list(row.text))) \
-        .map(lambda t: (t, 1))
+    # Select all emoji from all tweet text
+    allemoji = files_filtered.rdd \
+                             .flatMap(lambda row: EMOJI_UNICODE_SET
+                                      .intersection(list(row.text))) \
+                             .map(lambda t: (t, 1))
 
     # Count tweets
     tweet_cnt = tweets.count()
 
     # Count languages
-    langs_cnt = tweets.map(lambda row: row.lang).countByValue()
+    langs_cnt = tweets.groupBy('lang').count().collect()
 
     # Perform the regex search
-    results = tweets.flatMap(lambda row: re.findall(match_re, row.text)) \
+    results = tweets.rdd \
+                    .flatMap(lambda row: re.findall(match_re, row.text)) \
                     .cache()
     before = results.filter(lambda t: (t[0] in EMOJI_UNICODE_SET)) \
                     .map(lambda t: (t[0], 1))
@@ -74,15 +72,13 @@ def process(spark, data_dir, match_re, window=1, top=15):
     before_cnt = before.count()
     after_cnt = after.count()
 
-    # Counts reduced by emoji character
-    allemoji_cnt_by = allemoji.reduceByKey(add)
-    before_cnt_by = before.reduceByKey(add)
-    after_cnt_by = after.reduceByKey(add)
-
-    # Take ordered list of before and after characters
-    allemoji_top = allemoji_cnt_by.takeOrdered(top, key=lambda x: -x[1])
-    before_top = before_cnt_by.takeOrdered(top, key=lambda x: -x[1])
-    after_top = after_cnt_by.takeOrdered(top, key=lambda x: -x[1])
+    # Take ordered list of before and after character counts
+    allemoji_top = allemoji.reduceByKey(add) \
+                           .takeOrdered(top, key=lambda x: -x[1])
+    before_top = before.reduceByKey(add) \
+                       .takeOrdered(top, key=lambda x: -x[1])
+    after_top = after.reduceByKey(add) \
+                     .takeOrdered(top, key=lambda x: -x[1])
 
     summary_dict = {'before_top': before_top,
                     'after_top': after_top,
@@ -139,6 +135,28 @@ if __name__ == '__main__':
                         .getOrCreate()
     sc = spark.sparkContext
 
+    # A reduced json tweet schema for fields of interest
+    schema = sc.broadcast(StructType([
+        StructField('id', LongType(), True),
+        StructField('text', StringType(), True),
+        StructField('lang', StringType(), True),
+        StructField('retweet_count', LongType(), True),
+        StructField('favorite_count', LongType(), True),
+        StructField('created_at', StringType(), True),
+        StructField('geo', StructType([
+            StructField('coordinates', ArrayType(DoubleType(), True), True),
+            StructField('type', StringType(), True)
+            ]), True),
+        StructField('delete', StructType([
+            StructField('status', StructType([
+                StructField('id', LongType(), True),
+                StructField('id_str', StringType(), True),
+                StructField('user_id', LongType(), True),
+                StructField('user_id_str', StringType(), True)
+                ]), True)
+            ]), True)
+        ]))
+
     # Main process
     start_t = timer()
     result = process(spark, args.data_path, match_re,
@@ -155,4 +173,4 @@ if __name__ == '__main__':
     print("Total w/ After        : {:d}".format(result['after_count']))
 
     # Output results
-    output(result)
+    output(result, disp=True)
