@@ -18,7 +18,8 @@ import re
 from operator import add
 import argparse
 from pyspark.sql import SparkSession
-from pyspark.sql.types import *
+from pyspark.sql.types import StructType, StructField
+from pyspark.sql.types import LongType, StringType, ArrayType, DoubleType
 from unicode_codes import EMOJI_UNICODE, EMOJI_UNICODE_SET
 from timeit import default_timer as timer
 from utils import get_re
