@@ -28,16 +28,23 @@ from src.utils import get_re, save_outputs
 __author__ = "Jeremy Smith"
 
 
-def process(spark, data_dir, match_re, window=1, top=15):
+def process(spark: SparkSession, data_dir: str, match: str, window: int, top: int):
     """
     Main spark process for counting matches and other statistics.
     Input:
         spark - spark session
         data_dir - location of the tweet data files
-        match_re - the regular expression for matching
+        match - the emoji to match
         window - find this many characters before and after the match
         top - number of characters to return in count list
     """
+    match_sql = "%{}%".format(match)
+    match_re = get_re(match, window=window)
+
+    # A reduced json tweet schema for fields of interest
+    sc = spark.sparkContext
+    schema = sc.broadcast(BASIC_TWEET_SCHEMA)
+
     # Get json files and remove deletes
     files = spark.read.json(os.path.join(data_dir, "*"), schema.value)
     files_filtered = files.filter(files.delete.isNull())
@@ -88,10 +95,8 @@ def process(spark, data_dir, match_re, window=1, top=15):
 if __name__ == "__main__":
     args = parse_args()
 
-    # Match character, SQL search and regex search
+    # Match character
     match = EMOJI_UNICODE[":{}:".format(args.emoji_match)]
-    match_sql = "%{}%".format(match)
-    match_re = get_re(match, window=args.window)
 
     if args.verbose:
         print("Running on data   : {}".format(args.data_path))
@@ -104,14 +109,10 @@ if __name__ == "__main__":
         .config("spark.debug.maxToStringFields", 100)
         .getOrCreate()
     )
-    sc = spark.sparkContext
-
-    # A reduced json tweet schema for fields of interest
-    schema = sc.broadcast(BASIC_TWEET_SCHEMA)
 
     # Main process
     start_t = timer()
-    result = process(spark, args.data_path, match_re, window=args.window, top=args.top)
+    result = process(spark, args.data_path, match, window=args.window, top=args.top)
     end_t = timer()
 
     spark.stop()
