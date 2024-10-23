@@ -5,12 +5,14 @@ Utility functions for Spark Twitter search.
 """
 
 import re
+from typing import Any, Dict
+
 import pandas as pd
 
 __author__ = "Jeremy Smith"
 
 
-def get_re(match, window=1):
+def get_re(match: str, window: int = 1) -> re.Pattern:
     """
     Function to return the regular expression to match a character and its
     neighboring characters as set by the window size.
@@ -26,7 +28,7 @@ def get_re(match, window=1):
     return re.compile(r.format(*a))
 
 
-def output(result, disp=True):
+def save_outputs(result: Dict[str, Any], disp: bool = True) -> None:
     """
     Function to create dataframes from the summary result dictionary and output
     .csv files.
@@ -53,4 +55,3 @@ def output(result, disp=True):
     df_all.to_csv("./outputs/data.csv", encoding="utf-8", index=False)
     df_lang.to_csv("./outputs/langdata.csv", encoding="utf-8", index=False)
     df_allemoji.to_csv("./outputs/alldata.csv", encoding="utf-8", index=False)
-    return

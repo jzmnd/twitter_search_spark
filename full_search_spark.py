@@ -24,8 +24,7 @@ from pyspark.sql.types import StructType, StructField
 from pyspark.sql.types import LongType, StringType, ArrayType, DoubleType
 
 from src.unicode_codes import EMOJI_UNICODE, EMOJI_UNICODE_SET
-from src.utils import get_re
-from src.utils import output
+from src.utils import get_re, save_outputs
 
 __author__ = "Jeremy Smith"
 
@@ -182,4 +181,4 @@ if __name__ == "__main__":
     print("Total w/ After        : {:d}".format(result["after_count"]))
 
     # Output results
-    output(result, disp=True)
+    save_outputs(result, disp=True)
