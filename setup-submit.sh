@@ -1,13 +1,14 @@
 #!/bin/bash
 
+# Assumes Spark is installed via homebrew
 export SPARK_HOME="/opt/homebrew/opt/apache-spark/libexec"
 
+# Copy emoji data to root to ship with the Spark job
 pip install -U -t dependencies -r requirements.txt
 cp dependencies/emoji/unicode_codes/emoji.json ./emoji.json
 
-cd src
-zip -r ../src.zip .
-cd ..
+# Zip python source code
+cd src && zip -r ../src.zip . && cd ..
 
 # Modify this to run with your own data or emoji match
 spark-submit --master local[*] \
