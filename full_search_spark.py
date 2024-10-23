@@ -20,9 +20,8 @@ from operator import add
 from timeit import default_timer as timer
 
 from pyspark.sql import SparkSession
-from pyspark.sql.types import StructType, StructField
-from pyspark.sql.types import LongType, StringType, ArrayType, DoubleType
 
+from src.schema import BASIC_TWEET_SCHEMA
 from src.unicode_codes import EMOJI_UNICODE, EMOJI_UNICODE_SET
 from src.utils import get_re, save_outputs
 
@@ -123,48 +122,7 @@ if __name__ == "__main__":
     sc = spark.sparkContext
 
     # A reduced json tweet schema for fields of interest
-    schema = sc.broadcast(
-        StructType(
-            [
-                StructField("id", LongType(), True),
-                StructField("text", StringType(), True),
-                StructField("lang", StringType(), True),
-                StructField("retweet_count", LongType(), True),
-                StructField("favorite_count", LongType(), True),
-                StructField("created_at", StringType(), True),
-                StructField(
-                    "geo",
-                    StructType(
-                        [
-                            StructField("coordinates", ArrayType(DoubleType(), True), True),
-                            StructField("type", StringType(), True),
-                        ]
-                    ),
-                    True,
-                ),
-                StructField(
-                    "delete",
-                    StructType(
-                        [
-                            StructField(
-                                "status",
-                                StructType(
-                                    [
-                                        StructField("id", LongType(), True),
-                                        StructField("id_str", StringType(), True),
-                                        StructField("user_id", LongType(), True),
-                                        StructField("user_id_str", StringType(), True),
-                                    ]
-                                ),
-                                True,
-                            )
-                        ]
-                    ),
-                    True,
-                ),
-            ]
-        )
-    )
+    schema = sc.broadcast(BASIC_TWEET_SCHEMA)
 
     # Main process
     start_t = timer()
