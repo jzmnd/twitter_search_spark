@@ -39,3 +39,6 @@ outputs/
 # Testing
 .coverage
 htmlcov
+
+# Jupyter Notebook
+.ipynb_checkpoints
