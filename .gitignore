@@ -26,12 +26,15 @@ wheels/
 *.egg
 metastore_db/
 spark-warehouse/
+dependencies/
+src.zip
 
 # Data / logs
 data/
 small_data/
 outputs/
 *.log
+emoji.json
 
 # DS Store
 .DS_Store
