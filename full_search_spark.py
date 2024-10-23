@@ -13,17 +13,19 @@ Spark version for data parallelization.
 -t  : Number of top characters to output
 """
 
+import argparse
 import os
 import re
 from operator import add
-import argparse
+from timeit import default_timer as timer
+
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType, StructField
 from pyspark.sql.types import LongType, StringType, ArrayType, DoubleType
-from unicode_codes import EMOJI_UNICODE, EMOJI_UNICODE_SET
-from timeit import default_timer as timer
-from utils import get_re
-from utils import output
+
+from src.unicode_codes import EMOJI_UNICODE, EMOJI_UNICODE_SET
+from src.utils import get_re
+from src.utils import output
 
 __author__ = "Jeremy Smith"
 
