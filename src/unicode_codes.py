@@ -4,6 +4,7 @@
 """
 Data literal storing emoji names and unicode codes
 """
+
 import json
 
 __all__ = ["EMOJI_UNICODE", "UNICODE_EMOJI", "EMOJI_UNICODE_SET"]

@@ -17,4 +17,5 @@ spark-submit --master local[*] \
              --data_path "small_data/01" \
              --emoji_match water_pistol \
              --window 1 \
-             --top 15
+             --top 15 \
+             --verbose

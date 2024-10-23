@@ -13,7 +13,6 @@ Spark version for data parallelization.
 -t  : Number of top characters to output
 """
 
-import argparse
 import os
 import re
 from operator import add
@@ -21,6 +20,7 @@ from timeit import default_timer as timer
 
 from pyspark.sql import SparkSession
 
+from src.cli import parse_args
 from src.schema import BASIC_TWEET_SCHEMA
 from src.unicode_codes import EMOJI_UNICODE, EMOJI_UNICODE_SET
 from src.utils import get_re, save_outputs
@@ -72,7 +72,7 @@ def process(spark, data_dir, match_re, window=1, top=15):
     before_top = before.reduceByKey(add).takeOrdered(top, key=lambda x: -x[1])
     after_top = after.reduceByKey(add).takeOrdered(top, key=lambda x: -x[1])
 
-    summary_dict = {
+    return {
         "before_top": before_top,
         "after_top": after_top,
         "all_emoji_top": allemoji_top,
@@ -84,33 +84,18 @@ def process(spark, data_dir, match_re, window=1, top=15):
         "language_counts": langs_cnt,
     }
 
-    return summary_dict
-
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Search a Twitter archive (from archive.org) to find the "
-        "characters which occur before and after a chosen target. "
-        "Uses Spark for distributed searching.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
-    parser.add_argument(
-        "-p", "--data_path", default="small_data", help="Path to the Twitter archive"
-    )
-    parser.add_argument("-m", "--emoji_match", default="pistol", help="Emoji character to match")
-    parser.add_argument("-w", "--window", type=int, default=1, help="Window size for adjacency")
-    parser.add_argument(
-        "-t", "--top", type=int, default=15, help="Number of top characters to output"
-    )
-    args = parser.parse_args()
+    args = parse_args()
 
     # Match character, SQL search and regex search
     match = EMOJI_UNICODE[":{}:".format(args.emoji_match)]
     match_sql = "%{}%".format(match)
     match_re = get_re(match, window=args.window)
 
-    print("Running on data   : {}".format(args.data_path))
-    print("Match             : {}  {}".format(args.emoji_match, match))
+    if args.verbose:
+        print("Running on data   : {}".format(args.data_path))
+        print("Match             : {}  {}".format(args.emoji_match, match))
 
     # Build SparkSession
     spark = (
@@ -131,12 +116,13 @@ if __name__ == "__main__":
 
     spark.stop()
 
-    print("Elapsed Time          : {:.3f} min".format((end_t - start_t) / 60))
-    print("Total Tweets          : {:d}".format(result["total_count"]))
-    print("Total Tweets w/ Match : {:d}".format(result["tweet_count"]))
-    print("Total Match Chars     : {:d}".format(result["match_count"]))
-    print("Total w/ Before       : {:d}".format(result["before_count"]))
-    print("Total w/ After        : {:d}".format(result["after_count"]))
+    if args.verbose:
+        print("Elapsed Time          : {:.3f} min".format((end_t - start_t) / 60))
+        print("Total Tweets          : {:d}".format(result["total_count"]))
+        print("Total Tweets w/ Match : {:d}".format(result["tweet_count"]))
+        print("Total Match Chars     : {:d}".format(result["match_count"]))
+        print("Total w/ Before       : {:d}".format(result["before_count"]))
+        print("Total w/ After        : {:d}".format(result["after_count"]))
 
     # Output results
-    save_outputs(result, disp=True)
+    save_outputs(result, disp=args.verbose)
