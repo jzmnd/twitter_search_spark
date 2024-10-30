@@ -15,7 +15,6 @@ Spark version for data parallelization.
 """
 
 import os
-import re
 from operator import add
 from timeit import default_timer as timer
 
@@ -23,8 +22,9 @@ from pyspark.sql import SparkSession
 
 from src.cli import parse_args
 from src.schema import BASIC_TWEET_SCHEMA
-from src.unicode_codes import EMOJI_UNICODE, EMOJI_UNICODE_SET
-from src.utils import get_re, save_outputs
+from src.search import get_re, get_all_emoji, match_text, filter_adjacent
+from src.unicode_codes import EMOJI_UNICODE
+from src.utils import save_outputs
 
 __author__ = "Jeremy Smith"
 
@@ -54,24 +54,22 @@ def process(spark: SparkSession, data_dir: str, match: str, window: int, top: in
     # Match only to those with required character
     tweets = files_filtered.filter(files_filtered.text.like(match_sql)).cache()
 
-    # Select all emoji from all tweet text
-    allemoji = files_filtered.rdd.flatMap(
-        lambda row: EMOJI_UNICODE_SET.intersection(list(row.text))
-    ).map(lambda t: (t, 1))
-
     # Count tweets
     tweet_cnt = tweets.count()
 
     # Count languages
     langs_cnt = tweets.groupBy("lang").count().collect()
 
-    # Perform the regex search
-    results = tweets.rdd.flatMap(lambda row: re.findall(match_re, row.text)).cache()
-    before = results.filter(lambda t: (t[0] in EMOJI_UNICODE_SET)).map(lambda t: (t[0], 1))
-    after = results.filter(lambda t: (t[-1] in EMOJI_UNICODE_SET)).map(lambda t: (t[-1], 1))
+    # Select all emoji from all tweet text
+    allemoji = get_all_emoji(files_filtered)
+
+    # Perform the regex search and store before and after emoji
+    matches = match_text(tweets, match_re).cache()
+    before = filter_adjacent(matches, window, position=-1)
+    after = filter_adjacent(matches, window, position=1)
 
     # Count matches
-    match_cnt = results.count()
+    match_cnt = matches.count()
     before_cnt = before.count()
     after_cnt = after.count()
 
