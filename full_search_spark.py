@@ -1,5 +1,6 @@
-#!/usr/bin/env python
-# encoding: utf-8
+#!/usr/bin/env python3
+# -*- coding: UTF-8 -*-
+
 """
 Search a Twitter archive (from archive.org) to find the characters which
 occur before and after a chosen target.
