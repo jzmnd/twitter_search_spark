@@ -15,12 +15,13 @@ from src.unicode_codes import EMOJI_UNICODE_SET
 def get_re(match: str, window: int = 1) -> re.Pattern:
     """
     Function to return the regular expression to match a character and its
-    neighboring characters as set by the window size.
+    neighboring emoji or words as set by the window size.
     Input:
         match  - character to match
-        window - find this many characters before and after the match
+        window - find this many emoji or words before and after the match
     """
-    word_or_emoji_re = r"(['#@]?\w[\w'-]*|\W)?"
+    # Matches on a word (including hashtags and mentions) or a non-word character (excluding spaces)
+    word_or_emoji_re = r"(['#@]?\w[\w'-]*|[^a-zA-Z0-9_\s])?"
 
     r = "{} " + (window - 1) * "*?{} " + "*?({}) " + (window - 1) * "*{} " + "*{}"
     a = [word_or_emoji_re] * window + [match] + [word_or_emoji_re] * window
