@@ -21,9 +21,9 @@ def get_re(match: str, window: int = 1) -> re.Pattern:
         window - find this many emoji or words before and after the match
     """
     # Matches on a word (including hashtags and mentions) or a non-word character (excluding spaces)
-    word_or_emoji_re = r"(['#@]?\w[\w'-]*|[^a-zA-Z0-9_\s])?"
+    word_or_emoji_re = r"['#@]?\w[\w'-]*|[^a-zA-Z0-9_\s]"
 
-    r = "{} " + (window - 1) * "*?{} " + "*?({}) " + (window - 1) * "*{} " + "*{}"
+    r = "({})*? " + (window - 1) * "*?({})*? " + "*?({}) " + (window - 1) * "*({})? " + "*({})?"
     a = [word_or_emoji_re] * window + [match] + [word_or_emoji_re] * window
 
     return re.compile(r.format(*a))
