@@ -34,7 +34,7 @@ def get_all_emoji(df: DataFrame) -> RDD:
     Input:
         df - tweet data, should contain a `text` column
     """
-    results = df.rdd.flatMap(lambda row: EMOJI_UNICODE_SET.intersection(list(row.text)))
+    results = df.rdd.flatMap(lambda row: (c for c in row.text if c in EMOJI_UNICODE_SET))
     return results.map(lambda t: (t, 1))
 
 
