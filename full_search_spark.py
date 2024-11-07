@@ -22,7 +22,7 @@ from pyspark.sql import SparkSession
 
 from src.cli import parse_args
 from src.schema import BASIC_TWEET_SCHEMA
-from src.search import get_re, get_all_emoji, match_text, filter_adjacent
+from src.search import get_all_emoji, match_text, filter_adjacent
 from src.unicode_codes import EMOJI_UNICODE
 from src.utils import save_outputs
 
@@ -40,7 +40,6 @@ def process(spark: SparkSession, data_dir: str, match: str, window: int, top: in
         top - number of characters to return in count list
     """
     match_sql = "%{}%".format(match)
-    match_re = get_re(match, window=window)
 
     # A reduced json tweet schema for fields of interest
     sc = spark.sparkContext
@@ -64,7 +63,7 @@ def process(spark: SparkSession, data_dir: str, match: str, window: int, top: in
     allemoji = get_all_emoji(files_filtered)
 
     # Perform the regex search and store before and after emoji
-    matches = match_text(tweets, match_re).cache()
+    matches = match_text(tweets, match, window).cache()
     before = filter_adjacent(matches, window, position=-1)
     after = filter_adjacent(matches, window, position=1)
 

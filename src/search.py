@@ -5,28 +5,15 @@
 Spark search functions for processing Tweet data.
 """
 import re
+from typing import List, Tuple
 
 from pyspark.sql import DataFrame
 from pyspark.rdd import RDD
 
 from src.unicode_codes import EMOJI_UNICODE_SET
 
-
-def get_re(match: str, window: int = 1) -> re.Pattern:
-    """
-    Function to return the regular expression to match a character and its
-    neighboring emoji or words as set by the window size.
-    Input:
-        match  - character to match
-        window - find this many emoji or words before and after the match
-    """
-    # Matches on a word (including hashtags and mentions) or a non-word character (excluding spaces)
-    word_or_emoji_re = r"['#@]?\w[\w'-]*|[^a-zA-Z0-9_\s]"
-
-    r = "({})*? " + (window - 1) * "*?({})*? " + "*?({}) " + (window - 1) * "*({})? " + "*({})?"
-    a = [word_or_emoji_re] * window + [match] + [word_or_emoji_re] * window
-
-    return re.compile(r.format(*a))
+# Matches on a word (including hashtags and mentions) or a non-word character (excluding spaces)
+WORD_OR_EMOJI_RE = re.compile(r"['#@]?\w[\w'-]*|[^a-zA-Z0-9_\s]")
 
 
 def get_all_emoji(df: DataFrame) -> RDD:
@@ -39,14 +26,38 @@ def get_all_emoji(df: DataFrame) -> RDD:
     return results.map(lambda t: (t, 1))
 
 
-def match_text(df: DataFrame, match_re: re.Pattern) -> RDD:
+def match_text(df: DataFrame, match: str, window: int) -> RDD:
     """
-    Perform the regular expression match on text data.
+    Find every occurrence of the match and the neighboring characters or words given a window size.
     Input:
-        df       - tweet data, should contain a `text` column
-        match_re - match regular expression
+        df     - tweet data, should contain a `text` column
+        match  - character to match
+        window - find this many emoji or words before and after the match
     """
-    return df.rdd.flatMap(lambda row: re.findall(match_re, row.text))
+
+    def find_all_matches(text: str, match: str, window: int) -> List[Tuple[str, ...]]:
+        words = re.findall(WORD_OR_EMOJI_RE, text)
+        results = []
+
+        for i, word in enumerate(words):
+            if word == match:
+                r = []
+                for w in range(window)[::-1]:
+                    if 0 <= i - (w + 1) < len(words):
+                        r.append(words[i - (w + 1)])
+                    else:
+                        r.append("")
+                r.append(word)
+                for w in range(window):
+                    if 0 <= i + (w + 1) < len(words):
+                        r.append(words[i + (w + 1)])
+                    else:
+                        r.append("")
+                results.append(tuple(r))
+
+        return results
+
+    return df.rdd.flatMap(lambda row: find_all_matches(row.text, match, window))
 
 
 def filter_adjacent(r: RDD, window: int, position: int) -> RDD:

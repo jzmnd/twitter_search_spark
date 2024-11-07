@@ -1,17 +1,8 @@
 """Unit tests for `search.py`"""
 
-import re
-
 import pytest
 
-from src.search import get_re, get_all_emoji, match_text, filter_adjacent
-
-
-@pytest.mark.parametrize("window,pattern", [(1, "pattern_window_1"), (2, "pattern_window_2")])
-def test_get_re(match_emoji, window, pattern, request):
-    """Should return the correct regular expression for different window sizes."""
-    match_re_1 = get_re(match_emoji, window=window)
-    assert match_re_1.pattern == request.getfixturevalue(pattern)
+from src.search import get_all_emoji, match_text, filter_adjacent
 
 
 def test_get_all_emoji(spark, tweet_data, all_emoji):
@@ -20,14 +11,10 @@ def test_get_all_emoji(spark, tweet_data, all_emoji):
     assert result.collect() == all_emoji
 
 
-@pytest.mark.parametrize(
-    "pattern,results",
-    [("pattern_window_1", "match_results_1"), ("pattern_window_2", "match_results_2")],
-)
-def test_match_text(spark, tweet_data, pattern, results, request):
+@pytest.mark.parametrize("window,results", [(1, "match_results_1"), (2, "match_results_2")])
+def test_match_text(spark, tweet_data, match_emoji, window, results, request):
     """Should return the results of the regular expression matching on the tweet data."""
-    match_re = re.compile(request.getfixturevalue(pattern))
-    result = match_text(tweet_data, match_re)
+    result = match_text(tweet_data, match_emoji, window)
     assert result.collect() == request.getfixturevalue(results)
 
 

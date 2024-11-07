@@ -22,28 +22,6 @@ def match_emoji():
 
 
 @pytest.fixture
-def pattern_window_1(match_emoji):
-    """Regex string for a window size of 1."""
-    match_emoji_grp = f" *?({match_emoji}) "
-    return (
-        r"(['#@]?\w[\w'-]*|[^a-zA-Z0-9_\s])*?"
-        + match_emoji_grp
-        + r"*(['#@]?\w[\w'-]*|[^a-zA-Z0-9_\s])?"
-    )
-
-
-@pytest.fixture
-def pattern_window_2(match_emoji):
-    """Regex string for a window size of 2."""
-    match_emoji_grp = f" *?({match_emoji}) "
-    return (
-        r"(['#@]?\w[\w'-]*|[^a-zA-Z0-9_\s])*? *?(['#@]?\w[\w'-]*|[^a-zA-Z0-9_\s])*?"
-        + match_emoji_grp
-        + r"*(['#@]?\w[\w'-]*|[^a-zA-Z0-9_\s])? *(['#@]?\w[\w'-]*|[^a-zA-Z0-9_\s])?"
-    )
-
-
-@pytest.fixture
 def tweet_data(spark):
     """Tweet data fixture."""
     return spark.createDataFrame(
@@ -97,6 +75,7 @@ def match_results_1():
         ("in", "😊", ""),
         ("", "😊", "and"),
         ("emoji", "😊", "😊"),
+        ("😊", "😊", ""),
         ("", "😊", "and"),
         ("emoji", "😊", "😆"),
         ("😍", "😊", ""),
@@ -114,6 +93,7 @@ def match_results_2():
         ("ending", "in", "😊", "", ""),
         ("", "", "😊", "and", "then"),
         ("two", "emoji", "😊", "😊", ""),
+        ("emoji", "😊", "😊", "", ""),
         ("", "", "😊", "and", "then"),
         ("an", "emoji", "😊", "😆", "after"),
         ("before", "😍", "😊", "", ""),
@@ -125,6 +105,7 @@ def match_results_2():
 def before():
     """Adjacent emoji counts before match."""
     return [
+        ("😊", 1),
         ("😍", 1),
         ("😍", 1),
     ]
